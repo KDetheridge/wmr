@@ -9,10 +9,12 @@ import java.util.Comparator;
 public class RailwayController implements Controller{
     RailwayData rd;
     HashMap<String, String> lineIndexMap;
+    Set<String> accessibleStationSet;
     public RailwayController(){
         rd = new RailwayData();
         lineIndexMap = new HashMap<String, String>();
-        
+        //Set of all accessible stations in the network
+        accessibleStationSet = rd.getAccessibleStations();
         lineIndexMap.put("a","Birmingham -- Dorridge -- Leamington Spa");
         lineIndexMap.put("b","Cross City Line");
         lineIndexMap.put("c","Birmingham -- Rugby -- Northampton -- London");
@@ -53,40 +55,79 @@ public class RailwayController implements Controller{
         return path;
 
     }
-    private String findNearestAccessibleStation(HashMap<String,Integer> station){
-        //Store a set of the immediate neighbours
-        ArrayList<Map.Entry<String,Integer>> neighbourList = new ArrayList(station.entrySet());
-        //neighbourListAccessible
-        //Set<Map.Entry<String,Integer>> stationNeighbours = station.entrySet();
-        //intersect the neighbourList set with the accessibleStations set.
-        //Get accessibleStations = O(1)
-        //retainAll(intersection) is O(n), but reduces o(n) by (numAccessibleStations/numTotalStations) * numNeighbours)
-        //in average case, but 0 in worst
 
-        //sort is O(n)
+    private String findNearestAccessibleStation(String stationName, Set<String> visited){
+        //Add the current station to the visited list so we don't revisit it later from a neighbour
+        visited.add(stationName);
+        HashMap<String,Integer> stationNeighbours = rd.getEdges(stationName);
+        //String set of all neighboring station names
+        Set<String> neighbourNameSet = new HashSet<String>(stationNeighbours.keySet());
 
-        //Then the for loop to iterate over the sorted list
+        //remove from the neighbourNameSet all the stations that have already been visited
+        neighbourNameSet.removeAll(visited);
 
+        //current station does not have step-free access and it has no neighbours that are unvisited
+        if (neighbourNameSet.size() == 0) {
+            return "";
+        }
 
-        //1 + n + n + n = O(n)
+        //Store the immediate neighbours in a set
+        Set<Map.Entry<String,Integer>> neighbourSet = new HashSet<Map.Entry<String,Integer>>(stationNeighbours.entrySet());
 
-        //Sort the neighbourList in value ascending order - to order the neighbours by distance from the current station
-        Collections.sort(neighbourList , new Comparator<Map.Entry<String, Integer>>() {
+        //A copy of neighbourNameSet to be filtered for accessible stations only
+        Set<String> accessibleNeighbourNameSet = new HashSet<String>(neighbourNameSet);
+
+        //intersect the accessibleNeighbourNameSet with the accessibleStationsSet.
+        //Keep only elements that exist in both, i.e. filter accessibleNeighbourNameSet for accessible stations.
+        accessibleNeighbourNameSet.retainAll(accessibleStationSet);
+
+        //define a new comparator to be used for sorting the map entries of the neighbourList
+        Comparator<Map.Entry<String, Integer>> mapEntrySort = new Comparator<Map.Entry<String, Integer>>() {
 
             public int compare(Map.Entry<String, Integer> o1, Map.Entry<String, Integer> o2 ) {
                 return o1.getValue().compareTo(o2.getValue());
             }
-    
-        });
+            
+        };
+        
+        ArrayList<Map.Entry<String,Integer>> neighbourList = new ArrayList<Map.Entry<String,Integer>>(stationNeighbours.entrySet());
+        Collections.sort(neighbourList, mapEntrySort);
 
-        for (Map.Entry<String,Integer) e : neighbourlist){
+        //if no neighbours have step-free access
+        if (accessibleNeighbourNameSet.isEmpty()){
 
+            for (Map.Entry<String, Integer> st : neighbourList){
+                //recursively call the function until at least one neighbour has step-free access.
+                String foundStation = findNearestAccessibleStation(st.getKey(), visited);
+                if (foundStation != ""){
+                    return foundStation;
+                }
+                
+            }
+            //All neighbours did not have an accessible station attached, return blank
+            return "";
         }
+        //One of the neighbours has step-free access
+        else{
+            for (Map.Entry<String, Integer> st : neighbourList){
+                String shortestDistanceStation = st.getKey();
+                //the station is accessible
+                //Return the first station name from the neighbourList that is an accessible station
+                if(accessibleNeighbourNameSet.contains(shortestDistanceStation)){
+                    return shortestDistanceStation;
+                }
 
+            }
+            return "";
+
+             
+   
+        }
+        
     }
     public String findAccessiblePath(String stationA, String stationB){
-        //A set of all stations that are wheelchair accessible.
-        Set<String> accessibleStations = rd.getAccessibleStations();
+        StringBuilder s = new StringBuilder();
+
 
         //Retrieve all of the edges stored in the railway data graph
         HashMap<String,HashMap<String,Integer>> railwayNetwork = rd.getAllEdges();
@@ -98,13 +139,19 @@ public class RailwayController implements Controller{
         //Used to prevent an endless loop
         Set<String> visitedStations = new HashSet<String>();
         //a is not an accessible station
-        if (!accessibleStations.contains(stationA)){
+        if (!accessibleStationSet.contains(stationA)){
+            s.append(stationA + " is not accessible. Replaced with the nearest accessible station: ");
             //find nearest stations to a that has accessibility
+            stationA = findNearestAccessibleStation(stationA, new HashSet<String>());
+            s.append(stationA + "\n\n");
+            return s.toString();            
         }
 
         //b is not an accessible station
-        if (!accessibleStations.contains(stationB)){
+        if (!accessibleStationSet.contains(stationB)){
             //find nearest stations to b that has accessibility
+            stationA = findNearestAccessibleStation(stationA, new HashSet<String>());
+            return s.toString(); 
         }
         String routeString = getRouteString(rd.getEdges(stationA).entrySet());
         return  routeString;

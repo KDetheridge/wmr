@@ -9,7 +9,7 @@
             "type": "java",
             "name": "Launch RailwayData",
             "request": "launch",
-            "mainClass": "RailwayData",
+            "mainClass": "TUI",
             "projectName": "wmr_e565a8d7"
         }
     ]

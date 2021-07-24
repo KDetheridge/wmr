@@ -1,6 +1,6 @@
 /**
  * A class to house the information for a single station.
- * A station must have a name, and can be accessible or inaccessible to wheelchair users.
+ * A station m`ust have a name, and can be accessible or inaccessible to wheelchair users.
  */
 public class Station extends Graph.Vertex{
     private String stationName;
