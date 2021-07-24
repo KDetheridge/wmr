@@ -12,7 +12,7 @@ import java.util.HashSet;
 
 public class Graph<T> {
     //A 2D integer array to hold the weight of a given edge in the graph.
-    private HashMap<T,HashMap<T,Integer>> adjWeightMatrix = new HashMap<T,HashMap<T,Integer>>();
+    private HashMap<T,HashMap<T,Integer>> adjWeightMap = new HashMap<T,HashMap<T,Integer>>();
     //The total number of vertices within a graph.
     private  HashMap<T, Integer> nodeEdgeCount = new HashMap<T, Integer>();
     private Map<T, List<T>> map = new HashMap<>();
@@ -22,7 +22,6 @@ public class Graph<T> {
      * @param src The source node.
      * @param dst The target node.
      * @param weight the weight for the edge from @param src to @param dst .
-     * @return Success (true) or Failure (false) to add the given edge.
      */
     public void addEdge(T src, T dst, int weight) {
 
@@ -30,19 +29,19 @@ public class Graph<T> {
         // src exist and dst exist
 
         //Source does not exist
-        if (!adjWeightMatrix.containsKey(src)){
+        if (!adjWeightMap.containsKey(src)){
             HashMap<T,Integer> srcEdges = new HashMap<T,Integer>();
             
             //if dst does not exist, add it and create an edge to src
-            if (!adjWeightMatrix.containsKey(dst)){
+            if (!adjWeightMap.containsKey(dst)){
 
               HashMap<T,Integer> dstEdges = new HashMap<T,Integer>();
               dstEdges.put(src,weight);
-              adjWeightMatrix.put(dst,dstEdges);
+              adjWeightMap.put(dst,dstEdges);
               
 
               srcEdges.put(dst,weight);
-              adjWeightMatrix.put(src,srcEdges);
+              adjWeightMap.put(src,srcEdges);
 
               nodeEdgeCount.put(dst, 1);
               nodeEdgeCount.put(src, 1);
@@ -50,12 +49,12 @@ public class Graph<T> {
             }
             //src does not exist, dst does exist
             else{
-              HashMap<T,Integer> dstEdges = adjWeightMatrix.get(dst);
+              HashMap<T,Integer> dstEdges = adjWeightMap.get(dst);
               dstEdges.put(src,weight);
-              adjWeightMatrix.put(dst,dstEdges);
+              adjWeightMap.put(dst,dstEdges);
 
               srcEdges.put(dst,weight);
-              adjWeightMatrix.put(src,srcEdges);
+              adjWeightMap.put(src,srcEdges);
 
               nodeEdgeCount.put(dst, nodeEdgeCount.get(dst) + 1);
               nodeEdgeCount.put(src, 1);
@@ -63,12 +62,12 @@ public class Graph<T> {
         }
         //src exists
         else{
-          HashMap<T,Integer> srcEdges = adjWeightMatrix.get(src);
+          HashMap<T,Integer> srcEdges = adjWeightMap.get(src);
           //Src exists, dst does not exist
           //FAIL: Example: Duddeston - Birmingham New Street
           //Duddeston created first, BNS created during this failing mapping
           //BNS gets Duddeston, but Duddeston does not get BNS. Failure to map dst to src
-          if(!adjWeightMatrix.containsKey(dst)){
+          if(!adjWeightMap.containsKey(dst)){
 
             nodeEdgeCount.put(src, nodeEdgeCount.get(src) + 1);
             
@@ -76,10 +75,10 @@ public class Graph<T> {
 
               srcEdges.put(dst,weight);
               
-              adjWeightMatrix.put(src,srcEdges);
+              adjWeightMap.put(src,srcEdges);
 
               dstEdges.put(src,weight);
-              adjWeightMatrix.put(dst,dstEdges);
+              adjWeightMap.put(dst,dstEdges);
 
               nodeEdgeCount.put(dst, 1);
 
@@ -87,13 +86,13 @@ public class Graph<T> {
           }
           //Src exists, dst exists
           else{
-            HashMap<T,Integer> dstEdges = adjWeightMatrix.get(dst);
+            HashMap<T,Integer> dstEdges = adjWeightMap.get(dst);
             
             srcEdges.put(dst,weight);
-            adjWeightMatrix.put(src,srcEdges);
+            adjWeightMap.put(src,srcEdges);
 
             dstEdges.put(src,weight);
-            adjWeightMatrix.put(dst,dstEdges);
+            adjWeightMap.put(dst,dstEdges);
 
             nodeEdgeCount.put(dst, nodeEdgeCount.get(dst) + 1);
 
@@ -108,39 +107,69 @@ public class Graph<T> {
     // Remove edges
     // public void removeEdge(int src, int dst) {
     //   //Delete forward edge
-    //   adjWeightMatrix[src][dst] = 0;
+    //   adjWeightMap[src][dst] = 0;
     //   //Delete backward edge
-    //   adjWeightMatrix[dst][src] = 0;
+    //   adjWeightMap[dst][src] = 0;
     // }
   
     // Print the matrix
-    
+    /**
+     * @return a map containing the node keys and how many edges each has
+     */
     public HashMap<T, Integer> getNodeEdgeCountMap(){
       return nodeEdgeCount;
     }
-
+    /**
+     * @param node The node to retrieve the edge count of.
+     * @return The count of edges for the node.
+     */
     public Integer getNodeEdgeCount(T node){
       return nodeEdgeCount.get(node);
     }
-
+    /**
+     * @param key the key to check for.
+     * @return true or false.
+     */
     public boolean containsKey(T key){
-      return adjWeightMatrix.containsKey(key);
+      return adjWeightMap.containsKey(key);
     }
-
-    public HashMap<T,Integer> getEdges(T src){
-      return adjWeightMatrix.get(src);
+    /**
+     * @param key the key to grab the value of.
+     */
+    public HashMap<T,Integer> getEdges(T key){
+      return adjWeightMap.get(key);
     }
+    /**
+     * @return all edges in the graph.
+     */
     public HashMap<T,HashMap<T,Integer>> getEdges(){
-      return adjWeightMatrix;
+      return adjWeightMap;
+    }
+    /**
+     * Return the weight of an edge between two nodes.
+     * @param nodeA the source node
+     * @param nodeB the target node
+     * @return the integer weight of the edge between nodeA and nodeB
+     */
+    public Integer getEdgeWeight(T nodeA, T nodeB){
+
+      Integer valueFound = adjWeightMap.get(nodeA).get(nodeB);
+      if(valueFound == null){
+      return 0;
+      }
+      return valueFound;
     }
 
+    /**
+     * @return an entrySet view of all the edges in the graph.
+     */
     public Set<Map.Entry<T,HashMap<T,Integer>>> entrySet(){
-      return adjWeightMatrix.entrySet();
+      return adjWeightMap.entrySet();
     }
     public String toString() {
       StringBuilder s = new StringBuilder();
       Set<Map.Entry<T,HashMap<T,Integer>>> entrySet = new HashSet<Map.Entry<T,HashMap<T,Integer>>>();
-      entrySet.addAll(adjWeightMatrix.entrySet());
+      entrySet.addAll(adjWeightMap.entrySet());
       for (Map.Entry<T,HashMap<T,Integer>> e: entrySet){
         s.append(e);
         s.append("\n");
