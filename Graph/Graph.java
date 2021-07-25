@@ -9,7 +9,12 @@ import java.util.HashSet;
 
 
 
-
+/**
+ * @author Kieran Detheridge
+ * A generic Graph class to hold graph-like data.
+ * The edges are stored in the form of a HashMap containing more HashMaps as values.
+ * The adjWeightMap contains the entire graph as a map of nodes to other nodes indicating the presence of edges.
+ */
 public class Graph<T> {
     //A 2D integer array to hold the weight of a given edge in the graph.
     private HashMap<T,HashMap<T,Integer>> adjWeightMap = new HashMap<T,HashMap<T,Integer>>();

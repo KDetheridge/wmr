@@ -32,13 +32,22 @@ public class RailwayController implements Controller{
 
     @Override
     public String listAllTermini(String line){
+        StringBuilder s = new StringBuilder();
     String lineName = lineIndexMap.get(line);
-    String result = rd.listAllTermini(lineName);
-    if (result == null){
-        return "Invalid line, please try again.";
+    if (lineName == null){
+        return("Please enter a valid selection");
+    }
+    Set<String> terminiSet = rd.listAllTermini(lineName);
+    if (terminiSet == null){
+        return "This station has no termini.";
     }
     else{
-        return result;
+        s.append("\nTermini of " + lineName + ": \n");
+        for (String t : terminiSet){
+            s.append(t + "\n");
+        }
+        return s.toString();
+        
     }
    
     }
@@ -46,29 +55,103 @@ public class RailwayController implements Controller{
     public String listStationsInLine(String line){
         StringBuilder s = new StringBuilder();
         String lineName = lineIndexMap.get(line);
+        Set<String> terminiSet = rd.listAllTermini(lineName);
+
         if (lineName == null){
             return "Invalid selection. Please try again.";
         }
-        ArrayList<String> stationSequence = rd.getLineStationsList(lineName);
+        ArrayList<String> stationSequence = rd.getLineStationsSequence(lineName);
+
         HashMap<String,HashMap<String,Integer>> edgeMap = rd.getAllEdges();
         String src;
+        s.append(stationSequence.get(0));
         String dst;
-        for(int i = 0; i < stationSequence.size()-1; i++){
+        int travelTime = 0;
+        int totalTravelTime = 0;
+        for (int i = 1; i< stationSequence.size()-1;  i++){
             src = stationSequence.get(i);
             dst = stationSequence.get(i+1);
-            s.append(src + " <- " + edgeMap.get(src).get(dst) + " -> " + dst);
+            
+            if (!(edgeMap.get(src).get(dst) == null)){
+                travelTime = edgeMap.get(src).get(dst);
+                s.append(" -" + travelTime + "-> " + dst);
+                totalTravelTime += travelTime;
+            }
+            
+            
         }
-        return s.toString();
+        
+        return  "\nCumulative Travel Time for line " + lineName + ": " + totalTravelTime + "\n" + s.toString();
     }
 
     @Override   
     public String showAccessiblePath(String plannedStartTime, String stationA, String stationB){
+        StringBuilder s = new StringBuilder();
+        if (stationA.compareTo(stationB) == 0){
+            return "Please enter two different stations.";
+        }
+        if(!isStationValid(stationA)){
+            s.append("Station \"" + stationA +"\" does not exist. Please check the spelling and capitalisation and try again\n");
+            return s.toString();
+        }  
+
+        if(!isStationValid(stationB)){
+            s.append("Station \"" + stationB +"\" does not exist. Please check the spelling and capitalisation and try again\n");
+            return s.toString();
+        }  
+
+        //a is not an accessible station
+        if (!accessibleStationSet.contains(stationA)){
+            s.append(stationA);
+            //find nearest stations to a that has step-free access
+            stationA = findNearestAccessibleStation(stationA, new HashSet<String>());
+
+            if (stationA != null && stationA != ""){
+                s.append(" is not accessible. Replaced with the nearest accessible station: ");
+                s.append(stationA + "\n");
+            }
+            else{
+                s.append(" is not a step-free station, and there are no other step-free stations in the network.\n");
+                return s.toString();
+            }
+            
+        }
         
+        //b is not an accessible station
+        if (!accessibleStationSet.contains(stationB)){
+            s.append(stationB);
+            //find nearest stations to B that has step-free access
+            stationB = findNearestAccessibleStation(stationB, new HashSet<String>());
+
+            if (stationB != null && stationB != ""){
+                s.append(" is not accessible. Replaced with the nearest accessible station: ");
+                s.append(stationB + "\n");
+            }
+            else{
+                s.append(" is not a step-free station, and there are no other step-free stations in the network.\n");
+                return s.toString();
+            }
+            
+        }
+        if (stationA.compareTo(stationB) == 0){
+            return "No valid route as the stations provided are inaccessible and the nearest station to both of them is " + stationB;
+        }
+
         //Find a path between A and B, or the nearest accessible stations from each station
         String path = findAccessiblePath(stationA, stationB);
-        String boardTime = calculateBoardingTime(plannedStartTime);
-        return path + "\n" + boardTime;
+        String boardTime = calculateBoardingTime(plannedStartTime,stationA);
+        return s.toString() + boardTime + "\n" + path ;
 
+    }
+
+    private boolean isStationValid(String stationName){
+
+        StringBuilder s = new StringBuilder();
+        if (!checkStationExists(stationName)){
+            
+            return false;
+        }
+        return true;
     }
     
 
@@ -83,55 +166,22 @@ public class RailwayController implements Controller{
      * Finds an accessible path between a start station and an end station
      */
     public String findAccessiblePath(String stationA, String stationB){
-        boolean success = true;
         StringBuilder s = new StringBuilder();
-        if (!validateStation(stationA)){
-            s.append("Station \"" + stationA +"\" does not exist. Please check the spelling and capitalisation and try again\n");
-            success = false;
-        }
 
-        if (!validateStation(stationB)){
-            s.append("Station \"" + stationB +"\" does not exist. Please check the spelling and capitalisation and try again\n");
-            success = false;
-        }
-        //if either of the provided stations could not be found within the network,
-        if (!success){
-            //return an error message to the user.
-            return s.toString();
-        }
 
-        //a is not an accessible station
-        if (!accessibleStationSet.contains(stationA)){
-            s.append(stationA);
-            //find nearest stations to a that has step-free access
-            stationA = findNearestAccessibleStation(stationA, new HashSet<String>());
-            stationA = null;
-            if (stationA != null && stationA != ""){
-                s.append(" is not accessible. Replaced with the nearest accessible station: ");
-                s.append(stationA + "\n");
-            }
-            else{
-                s.append(" not a step-free station, and there are no other step-free stations in the network.\n");
-            }
-            
-        }
 
-        //b is not an accessible station
-        if (!accessibleStationSet.contains(stationB)){
-            s.append(stationB + " is not accessible. Replaced with the nearest accessible station: ");
-
-            //find nearest stations to b that has step-free access
-            stationB = findNearestAccessibleStation(stationB, new HashSet<String>());
-            s.append(stationB + "\n"); 
-        }
-
-        String route = calculateRoute(stationA,stationB,new HashSet<String>(), true);
+        String route = calculateRoute(stationA,stationB,new HashSet<String>());
         s.append(route);
         return  s.toString();
         
     }
 
-
+    /**
+     * A recursive function to find the nearest station with step-free access from a provided station, if the station itself does not have step-free access.
+     * @param stationName String of the station name.
+     * @param visited A set of visited stations. These stations should be ignored on subsequent calls to prevent an infinite loop.
+     * @return String name of the nearest station with step-free access.
+     */
     private String findNearestAccessibleStation(String stationName, Set<String> visited){
         //Add the current station to the visited list so we don't revisit it later from a neighbour
         visited.add(stationName);
@@ -146,10 +196,6 @@ public class RailwayController implements Controller{
         if (neighbourNameSet.size() == 0) {
             return "";
         }
-
-        //Store the immediate neighbours in a set
-        Set<Map.Entry<String,Integer>> neighbourSet = new HashSet<Map.Entry<String,Integer>>(stationNeighbours.entrySet());
-
         //A copy of neighbourNameSet to be filtered for accessible stations only
         Set<String> accessibleNeighbourNameSet = new HashSet<String>(neighbourNameSet);
 
@@ -165,8 +211,9 @@ public class RailwayController implements Controller{
             }
             
         };
-        
+
         ArrayList<Map.Entry<String,Integer>> neighbourList = new ArrayList<Map.Entry<String,Integer>>(stationNeighbours.entrySet());
+
         Collections.sort(neighbourList, mapEntrySort);
 
         //if no neighbours have step-free access
@@ -174,11 +221,11 @@ public class RailwayController implements Controller{
 
             for (Map.Entry<String, Integer> st : neighbourList){
                 //recursively call the function until at least one neighbour has step-free access.
+                //Assign the found value to foundStation
                 String foundStation = findNearestAccessibleStation(st.getKey(), visited);
                 if (foundStation != ""){
                     return foundStation;
                 }
-                
             }
             //All neighbours did not have an accessible station attached, return blank
             return "";
@@ -207,16 +254,24 @@ public class RailwayController implements Controller{
      * @param station the station to check for
      * @return true or false
      */
-    public boolean validateStation(String station){
+    public boolean checkStationExists(String station){
         //return true if the station exists
         return rd.getAllEdges().keySet().contains(station);
     }
 
-    private String calculateBoardingTime(String plannedStartTime){
-
+    /**
+     * Calculate the time that the journey should start at a given station.
+     * @param plannedStartTime the time the user specifies their journey should start at.
+     * @param stationName the station the user is travelling from
+     * @return String representing the boarding time with some extra information.
+     */
+    private String calculateBoardingTime(String plannedStartTime, String stationName){
+        //Trains start at 5am.
+        int networkStartTimeInMinutes = 5*60;
         int timeInMinutes = 0;
-        plannedStartTime.replace(":","");
-        plannedStartTime.replace(".","");
+        plannedStartTime = plannedStartTime.replace(":","");
+        plannedStartTime = plannedStartTime.replace(".","");
+        
         if (!(plannedStartTime.matches("[0-1]{1}[0-9]{1}[0-5]{1}[0-9]{1}")) && !(plannedStartTime.matches("2{1}[0-3]{1}[0-5]{1}[0-9]{1}")) ){
             return "Please enter a valid time";
         }
@@ -225,7 +280,15 @@ public class RailwayController implements Controller{
             timeInMinutes = Integer.valueOf(plannedStartTimeArr[i])*60;
         }
         timeInMinutes += (Integer.valueOf(plannedStartTimeArr[2])*10 + Integer.valueOf(plannedStartTimeArr[3]));
+
+        Set<String> stationLines = rd.getStationLines(stationName);
+        //The stations for the associated line, in order
+        ArrayList<String> lineStations = new ArrayList<String>();
         
+        for (String l : stationLines){
+            lineStations = rd.getLineStationsSequence(l);
+            break;
+        }
 
         String hour = String.valueOf(timeInMinutes/60);
         if (hour.length()==1){
@@ -236,26 +299,43 @@ public class RailwayController implements Controller{
             minutes = "0" + minutes;
         }
         return hour + ":" + minutes;
+        // String hour = String.valueOf(timeInMinutes/60);
+        // if (hour.length()==1){
+        //     hour = "0" + hour;
+        // }
+        // String minutes = String.valueOf(timeInMinutes % 60);
+        // if (minutes.length()==1){
+        //     minutes = "0" + minutes;
+        // }
+        // return hour + ":" + minutes;
 
         
     }
+
+    /**
+     * Calculate a route between the two specified stations. Recursive until a route is found or there are no remaining paths to check
+     * @param stationA The start station
+     * @param stationB the target station.
+     * @return a formatted string of the route.
+     */
     private String calculateRoute(String stationA, String stationB, Set<String> visited){
-        StringBuilder s = new StringBuilder();
+        StringBuilder routeString = new StringBuilder();
         //Add the current station to the visited list so we don't revisit it later from a neighbour
         visited.add(stationA);
 
         HashMap<String,Integer> stationNeighbours = rd.getEdges(stationA);
+
 
         //String set of all neighboring station names
         Set<String> neighbourNameSet = new HashSet<String>(stationNeighbours.keySet());
 
         ///If the target is one of stationA's neighbours
         if (neighbourNameSet.contains(stationB)){
-            s.append(stationA);
-            s.append(" -> ");
-            s.append(stationB);
+            routeString.append(stationA);
+            routeString.append(" -"+stationNeighbours.get(stationB)+"-> ");
+            routeString.append(stationB);
             //return the path from stationA to stationB
-            return s.toString();
+            return routeString.toString();
         }
 
         //remove from the neighbourNameSet all the stations that have already been visited
@@ -265,10 +345,6 @@ public class RailwayController implements Controller{
         if (neighbourNameSet.size() == 0) {
             return "";
         }
-
-        //Store the immediate neighbours in a set
-        Set<Map.Entry<String,Integer>> neighbourSet = new HashSet<Map.Entry<String,Integer>>(stationNeighbours.entrySet());
-
         //A copy of neighbourNameSet to be filtered for accessible stations only
         Set<String> accessibleNeighbourNameSet = new HashSet<String>(neighbourNameSet);
 
@@ -278,45 +354,30 @@ public class RailwayController implements Controller{
 
         //define a new comparator to be used for sorting the map entries of the neighbourList
         Comparator<Map.Entry<String, Integer>> mapEntrySort = new Comparator<Map.Entry<String, Integer>>() {
-
             public int compare(Map.Entry<String, Integer> o1, Map.Entry<String, Integer> o2 ) {
                 return o1.getValue().compareTo(o2.getValue());
-            }
-            
+            }  
         };
         
         ArrayList<Map.Entry<String,Integer>> neighbourList = new ArrayList<Map.Entry<String,Integer>>(stationNeighbours.entrySet());
+        
         Collections.sort(neighbourList, mapEntrySort);
 
-        
-        
         //else, calculateRoute(neighbour,stationB,visited);
         //for each neighbour,
-        for (Map.Entry<String,Integer> e : neighbourList){
-            String neighbourStationName = e.getKey();
-
-            Set<String> neighbourStationLines = rd.getStationLines(neighbourStationName);
-            Set<String> currStationLines = rd.getStationLines(stationA);
-
-            //Keep all lines on which both stationA and the neighbour station exist.
-            neighbourStationLines.retainAll(currStationLines);
-
-            //if the neighbour does not share
-            if (neighbourStationLines.isEmpty()){
-                // and the current station or the neighbour do not have step-free access, 
-                if (!(accessibleStationSet.contains(neighbourStationName))|| !(accessibleStationSet.contains(neighbourStationName))){
-                    //check the next neighbour.
+        for (Map.Entry<String,Integer> st : neighbourList){
+                String neighbourName = st.getKey();
+                if (visited.contains(neighbourName)){
                     continue;
                 }
-                else{
-
+                String foundRoute = calculateRoute(neighbourName,stationB,visited);
+                if (foundRoute != ""){
+                    routeString.append(stationA + " -"+stationNeighbours.get(neighbourName)+"-> ");
+                    routeString.append(foundRoute);
+                    return routeString.toString();
                 }
-            }
-
-            
-
-
         }
+        return "";
     }  
 
 
@@ -337,4 +398,4 @@ public class RailwayController implements Controller{
         }
         return s.toString();
     }
-    }
+}

@@ -10,19 +10,12 @@ import java.util.regex.Pattern;
 
 import java.util.Map;
 import java.util.HashMap;
-import java.util.TreeMap;
 
 import Graph.Graph;
 
 
 public class RailwayData {
-	private Scanner sc;
-	// Store the stations
-	private ArrayList<String> wmrStations;
-	private ArrayList<String> wmrStationsStepFree;
-	//Store the stations for each line in a map for quick lookup
-	private HashMap<String, Integer> stationIndexMap = new HashMap<String, Integer>();
-	private HashMap<String,HashSet<String>> lineStationsMap = new HashMap<String,HashSet<String>>();
+private HashMap<String,HashSet<String>> lineStationsMap = new HashMap<String,HashSet<String>>();
 
 	//Store each line. The Key is the line name, the value is a linked list of all the stations, in order, on that line, with weights attached to each.
 	private HashMap<String, Graph<String>> lineStationsGraphMap = new HashMap<String, Graph<String>>();
@@ -32,46 +25,39 @@ public class RailwayData {
 	//The graph to store all of the vertices for the entire network
 	private Graph<String> railwayNetwork = new Graph<String>();
 	private Set<String> accessibleStations = new HashSet<String>();
-	// private HashMap<RailLine,Station> lineStationMap;
-	// private HashMap<Station,RailLine> stationLineMap;
 
 	public RailwayData(){
 		
 		importData("..\\DC2310_cwk_data\\WMRlines.csv");
 		importAccessibleStationData("..\\DC2310_cwk_data\\WMRstationsWithStepFreeAccess.csv");
-		
-		//System.out.println(stationLinesMap.get("Birmingham New Street"));
-		//System.out.println(lineStationsMap.get("Birmingham -- Walsall -- Rugeley"));
-	}
-	
-	public static void main(String[] args) {
-		RailwayData rd = new RailwayData();
-	}
 
+	}
 
 	/**
-		 * Reads data from a csv file.
+		 * Reads data from a csv file. 
+		 * Populates several data structures that are key for using the application:
+		 * A graph of the entire railway network,
+		 * A mapping of stations to lines each station exists in,
+		 * A mapping of each line to the contained stations
+		 * A mapping for each Line and the stations in order of appearance in the file
 		 * @param filepath The absolute filepath to the required data, including the filename.
 		 */
 		private void importData(String filepath){
 			Scanner sc;
 			try{
 				sc = new Scanner(new File(filepath));
-				System.out.println("Loaded file successfully.");
+
 
 				//Use the carriage return/line feed sequence to split each row into a new list item.
 				sc.useDelimiter(Pattern.compile("[\\r\\n]+"));
 				String toAdd;
-				String[] parsedData;
-				
+
 				if (sc.hasNext()){
 					//Skip the header row
 					sc.next();
 				}
 
 				String prevLine = null;
-				int stationAIdx;
-				int stationBIdx;
 				
 				Graph<String> currGraph = new Graph<String>();
 				ArrayList<String> currStationsOrdered = new ArrayList<String>();
@@ -95,85 +81,39 @@ public class RailwayData {
 					//If this is not the first item
 
 					//if the current row continues the current railway line
-					if (currLine != null && prevLine !=null &&!(prevLine.equals(currLine))){
+					if (currLine != null && prevLine !=null && (prevLine.equals(currLine))){
+						currStationsOrdered = lineStationsSequenceArrMap.get(currLine);
+						currStationsOrdered.add(targetStation);
+
+						lineStationsSequenceArrMap.put(currLine,currStationsOrdered);
 						
-						//lineStationsGraph
-						//System.out.println(currLine + ": \n\t\t" + currGraph);
-						currGraph = new Graph<String>();
-						//System.out.println( prevLine + ": \n" + currStationsOrdered);
-						currStationsOrdered = new ArrayList<String>();
-						
-						lineStationsSequenceArrMap.get(currLine).add(sourceStation);
-						
-						//lineStationsSequenceArrMap.put(currLine, currStationsOrdered);
-						//Create an edge in the new graph from source station to target station and assign it's weight (travel time)
-						currGraph.addEdge(sourceStation, targetStation, weight);
-						
-					}else{
-						currGraph.addEdge(sourceStation,targetStation,weight);
-						
+
 					}
-					currStationsOrdered.add(sourceStation);
-					currStationsOrdered.add(targetStation);
+					//New railway line
+					else{
+						currGraph = new Graph<String>();
+						//create a new array and add the source and target stations of this edge.
+						currStationsOrdered = new ArrayList<String>();
+						currStationsOrdered.add(sourceStation);
+						currStationsOrdered.add(targetStation);
+						lineStationsSequenceArrMap.put(currLine,currStationsOrdered);
+					}
+					prevLine = currLine;
+
 					
-					
+					currGraph.addEdge(sourceStation,targetStation,weight);
 					//add or update the lineStationsGraphMap entry for the current Line
 					lineStationsGraphMap.put(currLine,currGraph);
-							
 
-					
+					//Add the source and target stations to the lineStationsMap for this line
+					addLineStations(currLine, sourceStation);
+					addLineStations(currLine, targetStation);
+					//Add the source and target stations to the stationLinesMap for this line
 
-					//System.out.println("stationIndexMap size before insert: " + stationIndexMap.size());
+					addStationLines(sourceStation, currLine);
+					addStationLines(targetStation, currLine);
 					
-					//If the source station for this pair has previously been indexed
-					if (stationIndexMap.containsKey(sourceStation)){
-						stationAIdx = stationIndexMap.get(sourceStation);
-						
-					}
-					
-					else{
-						//create a new index and retrieve its value into stationAIdx
-						stationAIdx = stationIndexMap.size();
-						stationIndexMap.put(sourceStation, stationAIdx);
-					}
-					//If the target station for this pair has previously been indexed
-					if (stationIndexMap.containsKey(targetStation)){
-						stationBIdx = stationIndexMap.get(targetStation);
-						
-					}
-					else{
-						//create a new index and retrieve its value into stationAIdx
-						stationBIdx = stationIndexMap.size();
-						stationIndexMap.put(targetStation, stationBIdx);
-					}
-					
-					
-					
-					//System.out.println("stationIndexMap size after insert: " + stationIndexMap.size());
-					//System.out.println(stationIndexMap.keySet());
-					//addlineStationsLinkedListItems(splt);
-					addLineStations(splt);
-					addStationLines(splt);
-					
-					//Add the Station to the lineStationsMap list for this line
-					
-					//Add the Line to the stationLinesMap List for this station
-					prevLine = currLine;
 				}
-				
-
-
-		 		// Set<Map.Entry<String,HashMap<String, Integer>>> entrySet = railwayNetwork.entrySet();
-				// for (Map.Entry<String,HashMap<String, Integer>> e : entrySet){
-				// 	System.out.println(e);
-				// }
-
-				
-
-				//pull from the graph all nodes and edges associated with that line
-				//print outAny nodes that have just one station
-					
-				
 
 		}
 
@@ -186,11 +126,14 @@ public class RailwayData {
 
 
 	}
+	/**
+	 * Import the data that records which stations have step-free access.
+	 * @param filepath The absolute or relative filepath to the data file
+	 */
 	private void importAccessibleStationData(String filepath){
 		Scanner sc;
 		try{
 			sc = new Scanner(new File(filepath));
-			System.out.println("Loaded file successfully.");
 
 			//Use the carriage return/line feed sequence to split each row into a new list item.
 			sc.useDelimiter(Pattern.compile("[\\r\\n]+"));
@@ -206,7 +149,6 @@ public class RailwayData {
 
 				accessibleStations.add(stationName);
 			}
-			System.out.println(accessibleStations);
 		}
 		catch (FileNotFoundException e){
 			System.err.println("Could not find the data file specified. \n Please Contact an administrator for assistance.");
@@ -214,123 +156,131 @@ public class RailwayData {
 		}
 	}
 
+	/**
+	 * @return a Set of the names of all accessible (step-free) stations in the network
+	 */
 	public Set<String> getAccessibleStations(){
 		return accessibleStations;
 	}
 
-	// private void addlineStationsLinkedListItems(String[] splt){
-	// 	if (lineStationsLinkedListMap.get(splt[0]) == null){
-	// 		//Create a new set to hold the line names
-	// 		LinkedList<String> toAdd = new LinkedList<String>();
-	// 		//Add the line name to the LinkedList
-	// 		toAdd.add(splt[1]);
-	// 		toAdd.add(splt[2]);
-			
-	// 		//put the source station name into the LinkedList
-	// 		lineStationsLinkedListMap.put(splt[0], toAdd);
-	// 	}
-	// 	else{
-	// 		LinkedList<String> stationList = lineStationsLinkedListMap.get(splt[0]);
-			
-	// 		if(stationList.contains)
-	// 		}
-			
-	// 	} 
-
-	// }
-
+	
+	/**
+	 * Get all edges for a given station.
+	 * @param station the station for which the edges should be returned.
+	 * @return a HashMap of the edges and their weights from the input station.
+	 */
 	public HashMap<String,Integer> getEdges(String station){
 		return railwayNetwork.getEdges(station);
 	}
 
+	/**
+	 * @return A list of all edges(connections) within the railwayNetwork.
+	 */
 	public HashMap<String,HashMap<String,Integer>> getAllEdges(){
 		return railwayNetwork.getEdges();
 	}
-	public String listAllTermini(String targetLine){
+	/**
+	 * Return the travel time in minutes between two stations
+	 * @param stationA the source station
+	 * @param stationB the target station
+	 * @return integer of the distance between stationA and stationB
+	 */
+	public int getEdgeWeight(String stationA, String stationB){
+		if (railwayNetwork.getEdges(stationA).get(stationB) != null){
+			return railwayNetwork.getEdges(stationA).get(stationB);
 
-		StringBuilder s = new StringBuilder();
+		}
+		else{
+			return 0;
+		}
+	}
+	/**
+	 * Get a set view of all termini for a specified line.
+	 * A termini is defined as being at the end of a route i.e. only having one connection to another station)
+	 * @param targetLine the line for which to return the termini
+	 * @return Set<String> of the termini of the targetLine.
+	 */
+	public Set<String> listAllTermini(String targetLine){
 		Graph<String> targetGraph = lineStationsGraphMap.get(targetLine);
 		Set<Map.Entry<String,Integer>> nodeEdgeCounts = targetGraph.getNodeEdgeCountMap().entrySet();
 		Set<String> checked = new HashSet<String>();
 		for (Map.Entry<String,Integer> e : nodeEdgeCounts){
 			if (e.getValue() == 1 && !checked.contains(e.getKey())){
 				checked.add(e.getKey());
-				s.append(e.getKey() + "\n");
+
 			}
 		}
 		
-		return s.toString();
+		return checked;
 	}
 
-	
-	private void addStationLines(String[] splt){
+	/**
+	 * Add a line to a given station within the stationLinesMap.
+	 * @param station the station to add the mapping to
+	 * @param line the line to add
+	 */
+	private void addStationLines(String station, String line){
 
 		//If the station does not already exist in the stationLinesMap HashMap
-		if (stationLinesMap.get(splt[1]) == null){
+		if (stationLinesMap.get(station) == null){
 			//Create a new set to hold the line names
 			HashSet<String> toAdd = new HashSet<String>();
 			//Add the line name to the set
-			toAdd.add(splt[0]);
+			toAdd.add(line);
 			//put the source station name into the array
-			stationLinesMap.put(splt[1], toAdd);
+			stationLinesMap.put(station, toAdd);
 		}
 		else{
-			HashSet<String> currLines = stationLinesMap.get(splt[1]);
-			currLines.add(splt[0]);
+			HashSet<String> currLines = stationLinesMap.get(station);
+			currLines.add(line);
 
 		}
 
-		//If the target station does not already exist in the stationLinesMap HashMap
-		if (stationLinesMap.get(splt[2]) == null){
-			//Create a new set to hold the line names
-			HashSet<String> toAdd = new HashSet<String>();
-			//Add the line name to the set
-			toAdd.add(splt[0]);
-			//put the source station name into the array
-			stationLinesMap.put(splt[2], toAdd);
-		}
-		else{
-			HashSet<String> currLines = stationLinesMap.get(splt[2]);
-			currLines.add(splt[0]);
-
-		}
 	}
-
+	/**
+	 * Returns a set view of the lines that a given station is a part of.
+	 * @param station the station to look for
+	 * @return a String set of the line names
+	 */
 	public Set<String> getStationLines(String station){
 		return stationLinesMap.get(station);
 	}
+	/**
+	 * Add a station to a line map.
+	 * @param line The line to add the station to
+	 * @param station the station to add to the line map
+	 * 
+	 */
+	private void addLineStations(String line, String station){
 
-	private void addLineStations(String[] splt){
-
-		if(lineStationsMap.get(splt[0]) == null){
+		if(lineStationsMap.get(line) == null){
 			HashSet<String> stationsToAdd = new HashSet<String>();
-			stationsToAdd.add(splt[1]);
-			stationsToAdd.add(splt[2]);
+			stationsToAdd.add(station);
 			
-			lineStationsMap.put(splt[0],stationsToAdd);
-			//System.out.println(lineStationsMap.get(splt[0]));
-			// try{
-			// 	System.in.read();
-			// }
-			// catch (Exception e){
-			// 	System.out.println(e.getMessage());
-			// }
+			lineStationsMap.put(line,stationsToAdd);
 		}
 		else{
 			//Retrieve a list of the currently recorded stations for this line
-			HashSet<String> currStations = lineStationsMap.get(splt[0]);
+			HashSet<String> currStations = lineStationsMap.get(line);
 			//Add the new items to the list (by reference, no reassignment to the lineStationsMap map required)
-			currStations.add(splt[1]);
-			currStations.add(splt[2]);
+			currStations.add(station);
 
 		}
 	}
-
+	/**
+	 * returns a Set view of the station names for a given line
+	 * @param line The line to retrieve station names for.
+	 * @return a string set of the station names
+	 */
 	public Set<String> getLineStationsSet(String line){
 		return lineStationsMap.get(line);
 	}
-
-	public ArrayList<String> getLineStationsList(String line){
+	/**
+	 * returns an ArrayList of the station names for a given line in the order they were inserted.
+	 * @param line The line to retrieve station names for.
+	 * @return a string ArrayList of the station names
+	 */
+	public ArrayList<String> getLineStationsSequence(String line){
 		return lineStationsSequenceArrMap.get(line);
 	}
 
