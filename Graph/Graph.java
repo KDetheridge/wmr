@@ -175,11 +175,7 @@ public class Graph<T> {
         s.append("\n");
       }
 
-        
-      
       return s.toString();
     }
-
-    
 
   }

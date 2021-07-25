@@ -103,9 +103,9 @@ public class RailwayData {
 						//System.out.println( prevLine + ": \n" + currStationsOrdered);
 						currStationsOrdered = new ArrayList<String>();
 						
+						lineStationsSequenceArrMap.get(currLine).add(sourceStation);
 						
-						
-						lineStationsSequenceArrMap.put(currLine, currStationsOrdered);
+						//lineStationsSequenceArrMap.put(currLine, currStationsOrdered);
 						//Create an edge in the new graph from source station to target station and assign it's weight (travel time)
 						currGraph.addEdge(sourceStation, targetStation, weight);
 						
@@ -194,20 +194,11 @@ public class RailwayData {
 
 			//Use the carriage return/line feed sequence to split each row into a new list item.
 			sc.useDelimiter(Pattern.compile("[\\r\\n]+"));
-			String toAdd;
-			String[] parsedData;
-			
+
 			if (sc.hasNext()){
 				//Skip the header row
 				sc.next();
 			}
-
-			String prevLine = null;
-			int stationAIdx;
-			int stationBIdx;
-			
-			Graph<String> currGraph = new Graph<String>();
-			ArrayList<String> currStationsOrdered = new ArrayList<String>();
 			while (sc.hasNext()){
 				
 				//Get the next line
@@ -304,6 +295,11 @@ public class RailwayData {
 
 		}
 	}
+
+	public Set<String> getStationLines(String station){
+		return stationLinesMap.get(station);
+	}
+
 	private void addLineStations(String[] splt){
 
 		if(lineStationsMap.get(splt[0]) == null){
@@ -329,5 +325,14 @@ public class RailwayData {
 
 		}
 	}
+
+	public Set<String> getLineStationsSet(String line){
+		return lineStationsMap.get(line);
+	}
+
+	public ArrayList<String> getLineStationsList(String line){
+		return lineStationsSequenceArrMap.get(line);
+	}
+
 
 }

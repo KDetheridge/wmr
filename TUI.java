@@ -46,6 +46,7 @@ public class TUI {
 	 */
 	private void getAndProcessUserOption() {
 		String command = stdIn.nextLine().trim();
+		System.out.println("\n");
 		switch (command) {
 		case "1" : // Lists all termini along a specified line
 			display("Lists all termini along a specific WMR line...");
@@ -69,6 +70,7 @@ public class TUI {
 			String stationA = stdIn.nextLine().trim();
 			display("Enter the name of the end station:");
 			String stationB = stdIn.nextLine().trim();
+			display("\n\n");
 			display(controller.showAccessiblePath(plannedStartTime, stationA, stationB));
 			break;
 		case "4" : // Exits the application
@@ -76,7 +78,7 @@ public class TUI {
 			System.exit(0);
 			break;
 		default : // Not a known command option
-			display(unrecogniseCommandErrorMsg(command));
+			display(unrecognisedCommandErrorMsg(command));
 		}
 	}
 
@@ -134,7 +136,7 @@ public class TUI {
      * @param error the unrecognised command
      * @return      an error message
      */
-    private static String unrecogniseCommandErrorMsg(String error) {
+    private static String unrecognisedCommandErrorMsg(String error) {
             return String.format("Cannot recognise the given command: %s.%n", error);
     }
 
